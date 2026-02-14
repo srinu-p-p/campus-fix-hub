@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/AppLayout';
 import { getCurrentUser, createIssue, detectCategory } from '@/lib/store';
@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
-import { Sparkles, Send, ImagePlus } from 'lucide-react';
+import { Sparkles, Send, ImagePlus, Camera, X, MapPin, Loader2 } from 'lucide-react';
 
 const ReportIssue = () => {
   const user = getCurrentUser();
@@ -22,8 +22,53 @@ const ReportIssue = () => {
   const [category, setCategory] = useState<IssueCategory>('other');
   const [priority, setPriority] = useState<IssuePriority>('medium');
   const [department, setDepartment] = useState('General');
-  const [imageUrl, setImageUrl] = useState('');
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [detected, setDetected] = useState(false);
+  const [detectingLocation, setDetectingLocation] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: 'File too large', description: 'Please upload an image under 5MB', variant: 'destructive' });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setImagePreview(ev.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleDetectLocation = () => {
+    if (!navigator.geolocation) {
+      toast({ title: 'Not supported', description: 'Geolocation is not supported by your browser', variant: 'destructive' });
+      return;
+    }
+    setDetectingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`);
+          const data = await res.json();
+          const addr = data.display_name || `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+          setLocation(addr);
+        } catch {
+          setLocation(`Lat: ${latitude.toFixed(5)}, Lng: ${longitude.toFixed(5)}`);
+        }
+        setDetectingLocation(false);
+        toast({ title: 'Location detected!', description: 'Your current location has been filled in.' });
+      },
+      (err) => {
+        setDetectingLocation(false);
+        toast({ title: 'Location error', description: err.message, variant: 'destructive' });
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
 
   const handleDescriptionChange = (value: string) => {
     setDescription(value);
@@ -48,7 +93,7 @@ const ReportIssue = () => {
       department,
       reportedBy: user.id,
       reporterName: user.name,
-      imageUrl: imageUrl || undefined,
+      imageUrl: imagePreview || undefined,
     });
     toast({ title: 'Issue Reported!', description: 'Your issue has been submitted successfully.' });
     navigate('/dashboard');
@@ -81,7 +126,12 @@ const ReportIssue = () => {
 
               <div className="space-y-2">
                 <Label htmlFor="location">Location</Label>
-                <Input id="location" placeholder="e.g. Block A, Room 302" value={location} onChange={e => setLocation(e.target.value)} required />
+                <div className="flex gap-2">
+                  <Input id="location" placeholder="e.g. Block A, Room 302" value={location} onChange={e => setLocation(e.target.value)} required className="flex-1" />
+                  <Button type="button" variant="outline" size="icon" onClick={handleDetectLocation} disabled={detectingLocation} title="Detect my location">
+                    {detectingLocation ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
+                  </Button>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -111,11 +161,26 @@ const ReportIssue = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="image">Image URL (optional)</Label>
-                <div className="flex gap-2">
-                  <Input id="image" placeholder="https://..." value={imageUrl} onChange={e => setImageUrl(e.target.value)} />
-                  <Button type="button" variant="outline" size="icon"><ImagePlus className="h-4 w-4" /></Button>
-                </div>
+                <Label>Attach Photo</Label>
+                <input type="file" accept="image/*" ref={fileInputRef} className="hidden" onChange={handleImageUpload} />
+                <input type="file" accept="image/*" capture="environment" ref={cameraInputRef} className="hidden" onChange={handleImageUpload} />
+                {imagePreview ? (
+                  <div className="relative rounded-lg overflow-hidden border border-border">
+                    <img src={imagePreview} alt="Issue preview" className="w-full max-h-48 object-cover" />
+                    <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={() => setImagePreview(null)}>
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <Button type="button" variant="outline" className="flex-1 gap-2" onClick={() => fileInputRef.current?.click()}>
+                      <ImagePlus className="h-4 w-4" /> Upload Photo
+                    </Button>
+                    <Button type="button" variant="outline" className="flex-1 gap-2" onClick={() => cameraInputRef.current?.click()}>
+                      <Camera className="h-4 w-4" /> Take Photo
+                    </Button>
+                  </div>
+                )}
               </div>
 
               <Button type="submit" className="w-full gap-2">
