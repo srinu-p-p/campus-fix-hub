@@ -1,6 +1,6 @@
 import { ReactNode, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { getCurrentUser, logout } from '@/lib/store';
+import { useAuth } from '@/hooks/useAuth';
 import { Wrench, LayoutDashboard, PlusCircle, LogOut, Shield, BarChart3, Building2, ClipboardList } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -14,20 +14,22 @@ interface AppLayoutProps {
 const AppLayout = ({ children, requireAuth = true, requireAdmin = false }: AppLayoutProps) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const user = getCurrentUser();
+  const { user, profile, loading, signOut } = useAuth();
 
   useEffect(() => {
+    if (loading) return;
     if (requireAuth && !user) {
       navigate('/login');
     }
-    if (requireAdmin && user?.role !== 'admin') {
+    if (requireAdmin && profile?.role !== 'admin') {
       navigate('/dashboard');
     }
-  }, [user, requireAuth, requireAdmin, navigate]);
+  }, [user, profile, loading, requireAuth, requireAdmin, navigate]);
 
+  if (loading) return <div className="min-h-screen flex items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>;
   if (requireAuth && !user) return null;
 
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = profile?.role === 'admin';
 
   const studentLinks = [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -43,14 +45,13 @@ const AppLayout = ({ children, requireAuth = true, requireAdmin = false }: AppLa
 
   const links = isAdmin ? adminLinks : studentLinks;
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await signOut();
     navigate('/');
   };
 
   return (
     <div className="flex min-h-screen bg-background">
-      {/* Sidebar */}
       <aside className="w-64 bg-sidebar border-r border-sidebar-border flex flex-col shrink-0">
         <div className="p-4 border-b border-sidebar-border">
           <Link to="/" className="flex items-center gap-2">
@@ -90,7 +91,7 @@ const AppLayout = ({ children, requireAuth = true, requireAdmin = false }: AppLa
 
         <div className="p-3 border-t border-sidebar-border">
           <div className="px-3 py-2 mb-2">
-            <p className="text-sm font-medium text-sidebar-foreground truncate">{user?.name}</p>
+            <p className="text-sm font-medium text-sidebar-foreground truncate">{profile?.name}</p>
             <p className="text-xs text-sidebar-foreground/50 truncate">{user?.email}</p>
           </div>
           <Button
@@ -105,7 +106,6 @@ const AppLayout = ({ children, requireAuth = true, requireAdmin = false }: AppLa
         </div>
       </aside>
 
-      {/* Main Content */}
       <main className="flex-1 overflow-auto">
         <div className="p-6 md:p-8 max-w-7xl mx-auto">
           {children}

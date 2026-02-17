@@ -1,5 +1,7 @@
+import { useState, useEffect } from 'react';
 import AppLayout from '@/components/AppLayout';
-import { getStats, getCategoryStats, getPriorityStats, getDepartmentStats } from '@/lib/store';
+import { fetchIssues } from '@/lib/queries';
+import { IssueCategory, IssuePriority } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
@@ -7,12 +9,44 @@ const COLORS = ['hsl(200, 80%, 50%)', 'hsl(38, 92%, 50%)', 'hsl(25, 95%, 55%)', 
 const CAT_COLORS = ['hsl(45, 90%, 50%)', 'hsl(200, 70%, 50%)', 'hsl(152, 60%, 42%)', 'hsl(280, 60%, 55%)', 'hsl(25, 95%, 55%)', 'hsl(0, 72%, 51%)', 'hsl(215, 50%, 50%)'];
 
 const AdminAnalytics = () => {
-  const stats = getStats();
-  const categoryStats = getCategoryStats();
-  const priorityStats = getPriorityStats();
-  const deptStats = getDepartmentStats();
+  const [issues, setIssues] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetchIssues().then(setIssues).catch(console.error);
+  }, []);
+
+  const stats = {
+    total: issues.length,
+    resolved: issues.filter(i => i.status === 'resolved' || i.status === 'closed').length,
+    critical: issues.filter(i => i.priority === 'critical').length,
+  };
 
   const resolutionRate = stats.total > 0 ? Math.round((stats.resolved / stats.total) * 100) : 0;
+
+  const categories: IssueCategory[] = ['electrical', 'plumbing', 'furniture', 'cleanliness', 'network', 'security', 'other'];
+  const categoryStats = categories.map(cat => ({
+    category: cat,
+    count: issues.filter(i => i.category === cat).length,
+  })).filter(c => c.count > 0);
+
+  const priorities: IssuePriority[] = ['low', 'medium', 'high', 'critical'];
+  const priorityStats = priorities.map(p => ({
+    priority: p,
+    count: issues.filter(i => i.priority === p).length,
+  }));
+
+  const departments = ['Maintenance', 'IT', 'Housekeeping', 'Security', 'General'];
+  const deptStats = departments.map(dept => {
+    const deptIssues = issues.filter(i => i.department === dept);
+    const resolved = deptIssues.filter(i => i.status === 'resolved' || i.status === 'closed').length;
+    return {
+      department: dept,
+      total: deptIssues.length,
+      active: deptIssues.filter(i => i.status !== 'resolved' && i.status !== 'closed').length,
+      resolved,
+      resolutionRate: deptIssues.length > 0 ? Math.round((resolved / deptIssues.length) * 100) : 0,
+    };
+  });
 
   return (
     <AppLayout requireAdmin>
@@ -22,36 +56,14 @@ const AdminAnalytics = () => {
           <p className="text-muted-foreground">Performance metrics and issue breakdown</p>
         </div>
 
-        {/* Top Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="shadow-card">
-            <CardContent className="p-4 text-center">
-              <p className="text-3xl font-display font-bold text-foreground">{resolutionRate}%</p>
-              <p className="text-xs text-muted-foreground">Resolution Rate</p>
-            </CardContent>
-          </Card>
-          <Card className="shadow-card">
-            <CardContent className="p-4 text-center">
-              <p className="text-3xl font-display font-bold text-foreground">{stats.total}</p>
-              <p className="text-xs text-muted-foreground">Total Issues</p>
-            </CardContent>
-          </Card>
-          <Card className="shadow-card">
-            <CardContent className="p-4 text-center">
-              <p className="text-3xl font-display font-bold text-secondary">~2.5d</p>
-              <p className="text-xs text-muted-foreground">Avg Resolution Time</p>
-            </CardContent>
-          </Card>
-          <Card className="shadow-card">
-            <CardContent className="p-4 text-center">
-              <p className="text-3xl font-display font-bold text-destructive">{stats.critical}</p>
-              <p className="text-xs text-muted-foreground">Critical Issues</p>
-            </CardContent>
-          </Card>
+          <Card className="shadow-card"><CardContent className="p-4 text-center"><p className="text-3xl font-display font-bold text-foreground">{resolutionRate}%</p><p className="text-xs text-muted-foreground">Resolution Rate</p></CardContent></Card>
+          <Card className="shadow-card"><CardContent className="p-4 text-center"><p className="text-3xl font-display font-bold text-foreground">{stats.total}</p><p className="text-xs text-muted-foreground">Total Issues</p></CardContent></Card>
+          <Card className="shadow-card"><CardContent className="p-4 text-center"><p className="text-3xl font-display font-bold text-secondary">~2.5d</p><p className="text-xs text-muted-foreground">Avg Resolution Time</p></CardContent></Card>
+          <Card className="shadow-card"><CardContent className="p-4 text-center"><p className="text-3xl font-display font-bold text-destructive">{stats.critical}</p><p className="text-xs text-muted-foreground">Critical Issues</p></CardContent></Card>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-6">
-          {/* Category Breakdown */}
           <Card className="shadow-card">
             <CardHeader><CardTitle className="font-display text-base">Issues by Category</CardTitle></CardHeader>
             <CardContent>
@@ -68,7 +80,6 @@ const AdminAnalytics = () => {
             </CardContent>
           </Card>
 
-          {/* Priority Breakdown */}
           <Card className="shadow-card">
             <CardHeader><CardTitle className="font-display text-base">Issues by Priority</CardTitle></CardHeader>
             <CardContent>
@@ -89,7 +100,6 @@ const AdminAnalytics = () => {
           </Card>
         </div>
 
-        {/* Department Table */}
         <Card className="shadow-card">
           <CardHeader><CardTitle className="font-display text-base">Department Scoreboard</CardTitle></CardHeader>
           <CardContent>

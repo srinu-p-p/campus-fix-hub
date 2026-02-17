@@ -1,19 +1,22 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import AppLayout from '@/components/AppLayout';
-import { getIssues } from '@/lib/store';
-import { Issue, IssueStatus } from '@/types';
+import { fetchIssues } from '@/lib/queries';
 import { StatusBadge, PriorityBadge, categoryLabels } from '@/components/IssueBadges';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search } from 'lucide-react';
 
 const AdminIssues = () => {
-  const allIssues = getIssues();
+  const [allIssues, setAllIssues] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [deptFilter, setDeptFilter] = useState<string>('all');
+
+  useEffect(() => {
+    fetchIssues().then(setAllIssues).catch(console.error);
+  }, []);
 
   const filtered = allIssues.filter(issue => {
     const matchSearch = issue.title.toLowerCase().includes(search.toLowerCase()) || issue.location.toLowerCase().includes(search.toLowerCase());
@@ -30,7 +33,6 @@ const AdminIssues = () => {
           <p className="text-muted-foreground">Review and update reported campus issues</p>
         </div>
 
-        {/* Filters */}
         <div className="flex flex-wrap gap-3">
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -60,7 +62,6 @@ const AdminIssues = () => {
           </Select>
         </div>
 
-        {/* Issue List */}
         <Card className="shadow-card border-border">
           <CardContent className="p-0">
             <div className="divide-y divide-border">
@@ -73,13 +74,13 @@ const AdminIssues = () => {
                       <div className="flex-1 min-w-0">
                         <h3 className="font-medium text-foreground text-sm truncate">{issue.title}</h3>
                         <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                          <span>{categoryLabels[issue.category]}</span>
+                          <span>{categoryLabels[issue.category as keyof typeof categoryLabels]}</span>
                           <span>•</span>
                           <span>{issue.department}</span>
                           <span>•</span>
                           <span>{issue.location}</span>
                           <span>•</span>
-                          <span>{issue.reporterName}</span>
+                          <span>{issue.reporter_name}</span>
                         </div>
                       </div>
                       <div className="flex items-center gap-3 ml-4 shrink-0">

@@ -1,14 +1,35 @@
 import { useState, useEffect } from 'react';
 import AppLayout from '@/components/AppLayout';
-import { getStats, getIssues, getDepartmentStats } from '@/lib/store';
+import { fetchIssues } from '@/lib/queries';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, Clock, CheckCircle, AlertTriangle, TrendingUp } from 'lucide-react';
 
 const AdminOverview = () => {
-  const stats = getStats();
-  const deptStats = getDepartmentStats();
-  const issues = getIssues();
-  const recentIssues = issues.slice(0, 5);
+  const [issues, setIssues] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetchIssues().then(setIssues).catch(console.error);
+  }, []);
+
+  const stats = {
+    total: issues.length,
+    submitted: issues.filter(i => i.status === 'submitted').length,
+    inProgress: issues.filter(i => i.status === 'in_progress' || i.status === 'reviewed').length,
+    resolved: issues.filter(i => i.status === 'resolved' || i.status === 'closed').length,
+    critical: issues.filter(i => i.priority === 'critical').length,
+  };
+
+  const departments = ['Maintenance', 'IT', 'Housekeeping', 'Security', 'General'];
+  const deptStats = departments.map(dept => {
+    const deptIssues = issues.filter(i => i.department === dept);
+    const resolved = deptIssues.filter(i => i.status === 'resolved' || i.status === 'closed').length;
+    return {
+      department: dept,
+      total: deptIssues.length,
+      resolved,
+      resolutionRate: deptIssues.length > 0 ? Math.round((resolved / deptIssues.length) * 100) : 0,
+    };
+  });
 
   const statCards = [
     { label: 'Total Issues', value: stats.total, icon: FileText, accent: 'text-info' },
@@ -16,6 +37,8 @@ const AdminOverview = () => {
     { label: 'Resolved', value: stats.resolved, icon: CheckCircle, accent: 'text-success' },
     { label: 'Critical', value: stats.critical, icon: AlertTriangle, accent: 'text-destructive' },
   ];
+
+  const recentIssues = issues.slice(0, 5);
 
   return (
     <AppLayout requireAdmin>
@@ -41,7 +64,6 @@ const AdminOverview = () => {
           ))}
         </div>
 
-        {/* Department Performance */}
         <Card className="shadow-card border-border">
           <CardHeader><CardTitle className="font-display text-lg flex items-center gap-2"><TrendingUp className="h-5 w-5 text-secondary" /> Department Performance</CardTitle></CardHeader>
           <CardContent>
@@ -61,7 +83,6 @@ const AdminOverview = () => {
           </CardContent>
         </Card>
 
-        {/* Recent Issues */}
         <Card className="shadow-card border-border">
           <CardHeader><CardTitle className="font-display text-lg">Recent Issues</CardTitle></CardHeader>
           <CardContent>

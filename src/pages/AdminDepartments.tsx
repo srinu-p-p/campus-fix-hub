@@ -1,18 +1,28 @@
+import { useState, useEffect } from 'react';
 import AppLayout from '@/components/AppLayout';
-import { getDepartmentStats } from '@/lib/store';
+import { fetchIssues } from '@/lib/queries';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Building2, TrendingUp, Users } from 'lucide-react';
-
-const adminAssignments: Record<string, string> = {
-  Maintenance: 'maintenance@campus.edu',
-  IT: 'it@campus.edu',
-  Housekeeping: 'housekeeping@campus.edu',
-  Security: 'security@campus.edu',
-  General: 'admin@campus.edu',
-};
+import { Building2, Users } from 'lucide-react';
 
 const AdminDepartments = () => {
-  const deptStats = getDepartmentStats();
+  const [issues, setIssues] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetchIssues().then(setIssues).catch(console.error);
+  }, []);
+
+  const departments = ['Maintenance', 'IT', 'Housekeeping', 'Security', 'General'];
+  const deptStats = departments.map(dept => {
+    const deptIssues = issues.filter(i => i.department === dept);
+    const resolved = deptIssues.filter(i => i.status === 'resolved' || i.status === 'closed').length;
+    return {
+      department: dept,
+      total: deptIssues.length,
+      active: deptIssues.filter(i => i.status !== 'resolved' && i.status !== 'closed').length,
+      resolved,
+      resolutionRate: deptIssues.length > 0 ? Math.round((resolved / deptIssues.length) * 100) : 0,
+    };
+  });
 
   return (
     <AppLayout requireAdmin>
@@ -57,11 +67,6 @@ const AdminDepartments = () => {
                   <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                     <div className="h-full rounded-full bg-secondary transition-all" style={{ width: `${dept.resolutionRate}%` }} />
                   </div>
-                </div>
-
-                <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1 border-t border-border">
-                  <Users className="h-3 w-3" />
-                  <span>{adminAssignments[dept.department]}</span>
                 </div>
               </CardContent>
             </Card>

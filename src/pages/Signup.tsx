@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { signup } from '@/lib/store';
+import { useAuth } from '@/hooks/useAuth';
 import { Wrench, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
@@ -14,8 +14,10 @@ const Signup = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const navigate = useNavigate();
+  const { signUp } = useAuth();
 
   const passwordStrength = () => {
     if (password.length === 0) return { level: 0, label: '' };
@@ -27,7 +29,7 @@ const Signup = () => {
 
   const strength = passwordStrength();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     if (password !== confirmPassword) {
@@ -38,11 +40,13 @@ const Signup = () => {
       setError('Password must be at least 6 characters');
       return;
     }
-    const result = signup(name, email, password);
-    if (result.success) {
-      setShowSuccess(true);
+    setLoading(true);
+    const result = await signUp(name, email, password);
+    setLoading(false);
+    if (result.error) {
+      setError(result.error);
     } else {
-      setError(result.error || 'Signup failed');
+      setShowSuccess(true);
     }
   };
 
@@ -96,7 +100,9 @@ const Signup = () => {
                 <Label htmlFor="confirmPassword">Confirm Password</Label>
                 <Input id="confirmPassword" type="password" placeholder="••••••••" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required />
               </div>
-              <Button type="submit" className="w-full">Create Account</Button>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? 'Creating account...' : 'Create Account'}
+              </Button>
             </form>
             <p className="text-center text-sm text-muted-foreground mt-4">
               Already have an account?{' '}
@@ -112,8 +118,8 @@ const Signup = () => {
             <div className="mx-auto h-16 w-16 rounded-full bg-success/10 flex items-center justify-center mb-4">
               <CheckCircle2 className="h-8 w-8 text-success" />
             </div>
-            <DialogTitle className="text-xl font-display">Account Created!</DialogTitle>
-            <DialogDescription>Your Campus Fix account has been created successfully. You can now sign in and start reporting issues.</DialogDescription>
+            <DialogTitle className="text-xl font-display">Check Your Email!</DialogTitle>
+            <DialogDescription>We've sent a verification link to your email. Please verify your email before signing in.</DialogDescription>
           </DialogHeader>
           <Button onClick={() => navigate('/login')} className="w-full mt-2">Go to Login</Button>
         </DialogContent>

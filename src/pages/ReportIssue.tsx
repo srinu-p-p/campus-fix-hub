@@ -1,10 +1,12 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/AppLayout';
-import { getCurrentUser, createIssue, detectCategory } from '@/lib/store';
+import { useAuth } from '@/hooks/useAuth';
+import { createIssue } from '@/lib/queries';
+import { detectCategory } from '@/lib/store';
 import { IssueCategory, IssuePriority } from '@/types';
 import { categoryLabels } from '@/components/IssueBadges';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,7 +16,7 @@ import { toast } from '@/hooks/use-toast';
 import { Sparkles, Send, ImagePlus, Camera, X, MapPin, Loader2 } from 'lucide-react';
 
 const ReportIssue = () => {
-  const user = getCurrentUser();
+  const { user, profile } = useAuth();
   const navigate = useNavigate();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -25,6 +27,7 @@ const ReportIssue = () => {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [detected, setDetected] = useState(false);
   const [detectingLocation, setDetectingLocation] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -36,9 +39,7 @@ const ReportIssue = () => {
       return;
     }
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      setImagePreview(ev.target?.result as string);
-    };
+    reader.onload = (ev) => setImagePreview(ev.target?.result as string);
     reader.readAsDataURL(file);
   };
 
@@ -54,13 +55,12 @@ const ReportIssue = () => {
         try {
           const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`);
           const data = await res.json();
-          const addr = data.display_name || `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
-          setLocation(addr);
+          setLocation(data.display_name || `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
         } catch {
           setLocation(`Lat: ${latitude.toFixed(5)}, Lng: ${longitude.toFixed(5)}`);
         }
         setDetectingLocation(false);
-        toast({ title: 'Location detected!', description: 'Your current location has been filled in.' });
+        toast({ title: 'Location detected!' });
       },
       (err) => {
         setDetectingLocation(false);
@@ -81,22 +81,28 @@ const ReportIssue = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
-    createIssue({
-      title,
-      description,
-      category,
-      priority,
-      location,
-      department,
-      reportedBy: user.id,
-      reporterName: user.name,
-      imageUrl: imagePreview || undefined,
-    });
-    toast({ title: 'Issue Reported!', description: 'Your issue has been submitted successfully.' });
-    navigate('/dashboard');
+    if (!user || !profile) return;
+    setSubmitting(true);
+    try {
+      await createIssue({
+        title,
+        description,
+        category,
+        priority,
+        location,
+        department,
+        reported_by: user.id,
+        reporter_name: profile.name,
+        image_url: imagePreview || undefined,
+      });
+      toast({ title: 'Issue Reported!', description: 'Your issue has been submitted successfully.' });
+      navigate('/dashboard');
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    }
+    setSubmitting(false);
   };
 
   return (
@@ -128,7 +134,7 @@ const ReportIssue = () => {
                 <Label htmlFor="location">Location</Label>
                 <div className="flex gap-2">
                   <Input id="location" placeholder="e.g. Block A, Room 302" value={location} onChange={e => setLocation(e.target.value)} required className="flex-1" />
-                  <Button type="button" variant="outline" size="icon" onClick={handleDetectLocation} disabled={detectingLocation} title="Detect my location">
+                  <Button type="button" variant="outline" size="icon" onClick={handleDetectLocation} disabled={detectingLocation}>
                     {detectingLocation ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
                   </Button>
                 </div>
@@ -183,8 +189,8 @@ const ReportIssue = () => {
                 )}
               </div>
 
-              <Button type="submit" className="w-full gap-2">
-                <Send className="h-4 w-4" /> Submit Report
+              <Button type="submit" className="w-full gap-2" disabled={submitting}>
+                <Send className="h-4 w-4" /> {submitting ? 'Submitting...' : 'Submit Report'}
               </Button>
             </form>
           </CardContent>
