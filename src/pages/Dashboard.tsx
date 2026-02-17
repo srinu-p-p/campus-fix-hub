@@ -1,20 +1,20 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import AppLayout from '@/components/AppLayout';
-import { getCurrentUser, getUserIssues, getStats } from '@/lib/store';
-import { Issue } from '@/types';
+import { useAuth } from '@/hooks/useAuth';
+import { fetchUserIssues } from '@/lib/queries';
 import { StatusBadge, PriorityBadge, categoryLabels } from '@/components/IssueBadges';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, AlertTriangle, Clock, CheckCircle, FileText } from 'lucide-react';
 
 const Dashboard = () => {
-  const user = getCurrentUser();
-  const [issues, setIssues] = useState<Issue[]>([]);
+  const { user, profile } = useAuth();
+  const [issues, setIssues] = useState<any[]>([]);
 
   useEffect(() => {
     if (user) {
-      setIssues(getUserIssues(user.id));
+      fetchUserIssues(user.id).then(setIssues).catch(console.error);
     }
   }, [user]);
 
@@ -37,7 +37,7 @@ const Dashboard = () => {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-display font-bold text-foreground">Welcome, {user?.name}</h1>
+            <h1 className="text-2xl font-display font-bold text-foreground">Welcome, {profile?.name}</h1>
             <p className="text-muted-foreground">Track your reported issues and submit new ones</p>
           </div>
           <Link to="/report">
@@ -47,7 +47,6 @@ const Dashboard = () => {
           </Link>
         </div>
 
-        {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {statCards.map((s, i) => (
             <Card key={i} className="shadow-card border-border">
@@ -64,7 +63,6 @@ const Dashboard = () => {
           ))}
         </div>
 
-        {/* Issue List */}
         <Card className="shadow-card border-border">
           <CardHeader>
             <CardTitle className="font-display text-lg">Your Reports</CardTitle>
@@ -90,7 +88,7 @@ const Dashboard = () => {
                           <h3 className="font-medium text-foreground truncate">{issue.title}</h3>
                         </div>
                         <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                          <span>{categoryLabels[issue.category]}</span>
+                          <span>{categoryLabels[issue.category as keyof typeof categoryLabels]}</span>
                           <span>•</span>
                           <span>{issue.location}</span>
                         </div>

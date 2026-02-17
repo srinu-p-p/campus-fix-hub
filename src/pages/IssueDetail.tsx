@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import AppLayout from '@/components/AppLayout';
-import { getIssueById, getCurrentUser, updateIssueStatus } from '@/lib/store';
-import { Issue, IssueStatus } from '@/types';
+import { useAuth } from '@/hooks/useAuth';
+import { fetchIssueById, updateIssueStatus } from '@/lib/queries';
+import { IssueStatus } from '@/types';
 import { StatusBadge, PriorityBadge, categoryLabels } from '@/components/IssueBadges';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,14 +17,25 @@ const statusOrder: IssueStatus[] = ['submitted', 'reviewed', 'in_progress', 'res
 
 const IssueDetail = () => {
   const { id } = useParams<{ id: string }>();
-  const user = getCurrentUser();
-  const [issue, setIssue] = useState<Issue | null>(null);
+  const { user, profile } = useAuth();
+  const [issue, setIssue] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [newStatus, setNewStatus] = useState<IssueStatus>('reviewed');
   const [note, setNote] = useState('');
+  const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
-    if (id) setIssue(getIssueById(id));
+    if (id) {
+      fetchIssueById(id).then(data => {
+        setIssue(data);
+        setLoading(false);
+      }).catch(() => setLoading(false));
+    }
   }, [id]);
+
+  if (loading) {
+    return <AppLayout><div className="text-center py-20"><p className="text-muted-foreground">Loading...</p></div></AppLayout>;
+  }
 
   if (!issue) {
     return (
@@ -36,20 +48,26 @@ const IssueDetail = () => {
     );
   }
 
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = profile?.role === 'admin';
   const backLink = isAdmin ? '/admin/issues' : '/dashboard';
 
-  const handleUpdate = () => {
+  const handleUpdate = async () => {
     if (!note.trim()) {
       toast({ title: 'Note required', description: 'Please add a note explaining the update.', variant: 'destructive' });
       return;
     }
-    const updated = updateIssueStatus(issue.id, newStatus, note, user?.name || 'Admin');
-    if (updated) {
+    if (!user) return;
+    setUpdating(true);
+    try {
+      await updateIssueStatus(issue.id, newStatus, note, user.id);
+      const updated = await fetchIssueById(issue.id);
       setIssue(updated);
       setNote('');
       toast({ title: 'Status Updated', description: `Issue status changed to ${newStatus}` });
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
     }
+    setUpdating(false);
   };
 
   return (
@@ -64,8 +82,8 @@ const IssueDetail = () => {
             <h1 className="text-2xl font-display font-bold text-foreground">{issue.title}</h1>
             <div className="flex items-center gap-3 mt-2 text-sm text-muted-foreground">
               <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> {issue.location}</span>
-              <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" /> {new Date(issue.createdAt).toLocaleDateString()}</span>
-              <span className="flex items-center gap-1"><User className="h-3.5 w-3.5" /> {issue.reporterName}</span>
+              <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" /> {new Date(issue.created_at).toLocaleDateString()}</span>
+              <span className="flex items-center gap-1"><User className="h-3.5 w-3.5" /> {issue.reporter_name}</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -79,11 +97,11 @@ const IssueDetail = () => {
           <CardContent className="space-y-3">
             <p className="text-foreground">{issue.description}</p>
             <div className="flex gap-4 text-sm text-muted-foreground">
-              <span>Category: {categoryLabels[issue.category]}</span>
+              <span>Category: {categoryLabels[issue.category as keyof typeof categoryLabels]}</span>
               <span>Department: {issue.department}</span>
             </div>
-            {issue.imageUrl && (
-              <img src={issue.imageUrl} alt="Issue" className="rounded-lg max-h-64 object-cover border border-border" />
+            {issue.image_url && (
+              <img src={issue.image_url} alt="Issue" className="rounded-lg max-h-64 object-cover border border-border" />
             )}
           </CardContent>
         </Card>
@@ -93,7 +111,7 @@ const IssueDetail = () => {
           <CardHeader><CardTitle className="text-base font-display">Progress Timeline</CardTitle></CardHeader>
           <CardContent>
             <div className="relative">
-              {issue.timeline.map((entry, i) => (
+              {issue.timeline?.map((entry: any, i: number) => (
                 <div key={i} className="flex gap-4 pb-6 last:pb-0 animate-slide-in" style={{ animationDelay: `${i * 80}ms` }}>
                   <div className="flex flex-col items-center">
                     <div className="h-8 w-8 rounded-full bg-secondary/10 flex items-center justify-center shrink-0">
@@ -104,10 +122,9 @@ const IssueDetail = () => {
                   <div className="flex-1 min-w-0 pb-2">
                     <div className="flex items-center gap-2 mb-1">
                       <StatusBadge status={entry.status} />
-                      <span className="text-xs text-muted-foreground">{new Date(entry.timestamp).toLocaleString()}</span>
+                      <span className="text-xs text-muted-foreground">{new Date(entry.created_at).toLocaleString()}</span>
                     </div>
                     <p className="text-sm text-foreground">{entry.note}</p>
-                    <p className="text-xs text-muted-foreground mt-1">By: {entry.updatedBy}</p>
                   </div>
                 </div>
               ))}
@@ -135,8 +152,8 @@ const IssueDetail = () => {
                 <Label>Update Note (required)</Label>
                 <Textarea placeholder="Describe what action was taken..." value={note} onChange={e => setNote(e.target.value)} />
               </div>
-              <Button onClick={handleUpdate} className="gap-2">
-                <CheckCircle2 className="h-4 w-4" /> Update Issue
+              <Button onClick={handleUpdate} className="gap-2" disabled={updating}>
+                <CheckCircle2 className="h-4 w-4" /> {updating ? 'Updating...' : 'Update Issue'}
               </Button>
             </CardContent>
           </Card>
