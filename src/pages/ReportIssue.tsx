@@ -13,7 +13,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
-import { Sparkles, Send, ImagePlus, Camera, X, MapPin, Loader2 } from 'lucide-react';
+import { Sparkles, Send, ImagePlus, Camera, X, MapPin, Loader2, Brain } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const ReportIssue = () => {
   const { user, profile } = useAuth();
@@ -28,6 +29,7 @@ const ReportIssue = () => {
   const [detected, setDetected] = useState(false);
   const [detectingLocation, setDetectingLocation] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [classifying, setClassifying] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -41,6 +43,27 @@ const ReportIssue = () => {
     const reader = new FileReader();
     reader.onload = (ev) => setImagePreview(ev.target?.result as string);
     reader.readAsDataURL(file);
+  };
+
+  const handleClassifyImage = async () => {
+    if (!imagePreview) return;
+    setClassifying(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('classify-image', {
+        body: { image: imagePreview },
+      });
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      setCategory(data.category);
+      setPriority(data.priority);
+      setDepartment(data.department);
+      if (data.description && !description) setDescription(data.description);
+      setDetected(true);
+      toast({ title: 'AI Classification Complete', description: `Detected: ${data.category} • ${data.priority} priority` });
+    } catch (err: any) {
+      toast({ title: 'Classification failed', description: err.message, variant: 'destructive' });
+    }
+    setClassifying(false);
   };
 
   const handleDetectLocation = () => {
@@ -171,10 +194,16 @@ const ReportIssue = () => {
                 <input type="file" accept="image/*" ref={fileInputRef} className="hidden" onChange={handleImageUpload} />
                 <input type="file" accept="image/*" capture="environment" ref={cameraInputRef} className="hidden" onChange={handleImageUpload} />
                 {imagePreview ? (
-                  <div className="relative rounded-lg overflow-hidden border border-border">
-                    <img src={imagePreview} alt="Issue preview" className="w-full max-h-48 object-cover" />
-                    <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={() => setImagePreview(null)}>
-                      <X className="h-3.5 w-3.5" />
+                  <div className="space-y-2">
+                    <div className="relative rounded-lg overflow-hidden border border-border">
+                      <img src={imagePreview} alt="Issue preview" className="w-full max-h-48 object-cover" />
+                      <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={() => setImagePreview(null)}>
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                    <Button type="button" variant="secondary" className="w-full gap-2" onClick={handleClassifyImage} disabled={classifying}>
+                      {classifying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Brain className="h-4 w-4" />}
+                      {classifying ? 'Analyzing with AI...' : 'AI Auto-Classify from Image'}
                     </Button>
                   </div>
                 ) : (
