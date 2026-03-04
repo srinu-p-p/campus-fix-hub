@@ -1,7 +1,7 @@
 import { ReactNode, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { Wrench, LayoutDashboard, PlusCircle, LogOut, Shield, BarChart3, Building2, ClipboardList } from 'lucide-react';
+import { Wrench, LayoutDashboard, PlusCircle, LogOut, Shield, BarChart3, Building2, ClipboardList, Package, CalendarDays, Megaphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -34,6 +34,9 @@ const AppLayout = ({ children, requireAuth = true, requireAdmin = false }: AppLa
   const studentLinks = [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/report', label: 'Report Issue', icon: PlusCircle },
+    { to: '/lost-found', label: 'Lost & Found', icon: Package },
+    { to: '/events', label: 'Events', icon: CalendarDays },
+    { to: '/announcements', label: 'Announcements', icon: Megaphone },
   ];
 
   const adminLinks = [
@@ -41,6 +44,9 @@ const AppLayout = ({ children, requireAuth = true, requireAdmin = false }: AppLa
     { to: '/admin/issues', label: 'Manage Issues', icon: ClipboardList },
     { to: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
     { to: '/admin/departments', label: 'Departments', icon: Building2 },
+    { to: '/events', label: 'Events', icon: CalendarDays },
+    { to: '/announcements', label: 'Announcements', icon: Megaphone },
+    { to: '/lost-found', label: 'Lost & Found', icon: Package },
   ];
 
   const links = isAdmin ? adminLinks : studentLinks;
