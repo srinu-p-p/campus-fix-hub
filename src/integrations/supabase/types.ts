@@ -14,6 +14,119 @@ export type Database = {
   }
   public: {
     Tables: {
+      announcements: {
+        Row: {
+          category: string
+          content: string
+          created_at: string
+          created_by: string
+          id: string
+          is_pinned: boolean
+          priority: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          content: string
+          created_at?: string
+          created_by: string
+          id?: string
+          is_pinned?: boolean
+          priority?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          content?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_pinned?: boolean
+          priority?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      event_registrations: {
+        Row: {
+          event_id: string
+          id: string
+          registered_at: string
+          user_id: string
+        }
+        Insert: {
+          event_id: string
+          id?: string
+          registered_at?: string
+          user_id: string
+        }
+        Update: {
+          event_id?: string
+          id?: string
+          registered_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_registrations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string
+          description: string
+          end_date: string | null
+          event_date: string
+          id: string
+          image_url: string | null
+          location: string
+          max_participants: number | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          created_by: string
+          description: string
+          end_date?: string | null
+          event_date: string
+          id?: string
+          image_url?: string | null
+          location: string
+          max_participants?: number | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string
+          description?: string
+          end_date?: string | null
+          event_date?: string
+          id?: string
+          image_url?: string | null
+          location?: string
+          max_participants?: number | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       issues: {
         Row: {
           category: string
@@ -59,6 +172,54 @@ export type Database = {
           status?: string
           title?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      lost_found_items: {
+        Row: {
+          category: string
+          contact_info: string | null
+          created_at: string
+          date_occurred: string
+          description: string
+          id: string
+          image_url: string | null
+          location: string
+          status: string
+          title: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          contact_info?: string | null
+          created_at?: string
+          date_occurred?: string
+          description: string
+          id?: string
+          image_url?: string | null
+          location: string
+          status?: string
+          title: string
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          contact_info?: string | null
+          created_at?: string
+          date_occurred?: string
+          description?: string
+          id?: string
+          image_url?: string | null
+          location?: string
+          status?: string
+          title?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }

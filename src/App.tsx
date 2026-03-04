@@ -14,6 +14,10 @@ import AdminOverview from "./pages/AdminOverview";
 import AdminIssues from "./pages/AdminIssues";
 import AdminAnalytics from "./pages/AdminAnalytics";
 import AdminDepartments from "./pages/AdminDepartments";
+import LostFound from "./pages/LostFound";
+import Events from "./pages/Events";
+import CreateEvent from "./pages/CreateEvent";
+import Announcements from "./pages/Announcements";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,10 +36,14 @@ const App = () => (
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/report" element={<ReportIssue />} />
             <Route path="/issue/:id" element={<IssueDetail />} />
+            <Route path="/lost-found" element={<LostFound />} />
+            <Route path="/events" element={<Events />} />
+            <Route path="/announcements" element={<Announcements />} />
             <Route path="/admin" element={<AdminOverview />} />
             <Route path="/admin/issues" element={<AdminIssues />} />
             <Route path="/admin/analytics" element={<AdminAnalytics />} />
             <Route path="/admin/departments" element={<AdminDepartments />} />
+            <Route path="/admin/events/create" element={<CreateEvent />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
