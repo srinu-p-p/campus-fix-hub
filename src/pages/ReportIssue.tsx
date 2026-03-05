@@ -130,7 +130,7 @@ const ReportIssue = () => {
 
   return (
     <AppLayout>
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-2xl mx-auto min-h-screen page-bg-report -m-6 p-6 rounded-lg">
         <h1 className="text-2xl font-display font-bold text-foreground mb-1">Report an Issue</h1>
         <p className="text-muted-foreground mb-6">Describe the problem and we'll route it to the right team</p>
 

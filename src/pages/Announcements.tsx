@@ -73,7 +73,7 @@ const Announcements = () => {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
+      <div className="space-y-6 min-h-screen page-bg-announcements -m-6 p-6 rounded-lg">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-display font-bold text-foreground">Announcements</h1>

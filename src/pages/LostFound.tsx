@@ -88,7 +88,7 @@ const LostFound = () => {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
+      <div className="space-y-6 min-h-screen page-bg-lost-found -m-6 p-6 rounded-lg">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-display font-bold text-foreground">Lost & Found</h1>
